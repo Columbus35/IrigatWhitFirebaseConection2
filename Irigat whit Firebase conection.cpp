@@ -24,20 +24,20 @@ const char *ntpServer = "ntp.lonelybinary.com";
 const long gmtOffset_sec = 3600L * 3;
 const int daylightOffset_sec = 0;
 
-void conectWifi();
+void connectWiFi();
 int previousIndex = 0;
 int currentIndex = 0;
 int index2 = 0;
 long timer = 0;
 bool start = true;
 bool dataTime = false;
-bool fls1(int min);
+bool checkTime(int min);
 long interval;
-bool stoptime = false;
-void startValva();
-void durata(long interval);
-void syncTime();
-void initFirebase();
+bool stopTime = false;
+void startValve();
+void duration(long interval);
+void synchronizeTime();
+void initializeFirebase();
 void streamTimeoutCallback(bool timeout);
 void streamCallback(StreamData data);
 void fetchInitialValues();
@@ -48,8 +48,8 @@ void setup(){
     pinMode(STARTER, OUTPUT);
     digitalWrite(STARTER, HIGH);
 
-    conectWifi();
-    initFirebase();
+    connectWiFi();
+    initializeFirebase();
     fetchInitialValues();
     Firebase.setStreamCallback(fbdo, streamCallback, streamTimeoutCallback);
 }
@@ -60,15 +60,15 @@ void loop()
     getLocalTime(&timeinfo);
     int hour = timeinfo.tm_hour;
     int min = timeinfo.tm_min;
-    bool ceas = fls1(min);
-    if(ceas){
+    bool clockCheck = checkTime(min);
+    if(clockCheck){
         interval = millis() + timer;
-        stoptime = true;
+        stopTime = true;
     }
-    startValva();
+    startValve();
 }
 
-bool fls1(int min) {
+bool checkTime(int min) {
     bool flag1 = false;
     if ((currentIndex == min && previousIndex == currentIndex - 1) && (start)) {
         flag1 = true;
@@ -83,23 +83,23 @@ bool fls1(int min) {
     return flag1;
 }
 
-void startValva() {
-    if(stoptime){
-        durata(interval); 
+void startValve() {
+    if(stopTime){
+        duration(interval); 
     }
 }
 
-void durata(long interval) {
+void duration(long interval) {
     if (millis() < interval) {
         digitalWrite(STARTER, LOW); 
     }
     else{
         digitalWrite(STARTER, HIGH);
-        stoptime = false;
+        stopTime = false;
     } 
 }
 
-void conectWifi(){
+void connectWiFi(){
     boolean ledState = false;
 
     Serial.print("Connecting to WiFi network ");
@@ -112,11 +112,10 @@ void conectWifi(){
         digitalWrite(LED_BUILTIN, ledState);
     }
     Serial.println("");
-    syncTime();
-
+    synchronizeTime();
 }
 
-void syncTime(){
+void synchronizeTime(){
     boolean ledState = false;
     Serial.print("Syncing time with NTP server ");
     struct tm timeinfo;
@@ -132,8 +131,8 @@ void syncTime(){
     digitalWrite(LED_BUILTIN, true);
 }
 
-void initFirebase() {
-    Serial.println("🔥 Firebase wird initialisiert...");
+void initializeFirebase() {
+    Serial.println("🔥 Initializing Firebase...");
 
     config.api_key = FIREBASE_API_KEY;
     config.database_url = FIREBASE_HOST;
@@ -147,8 +146,8 @@ void initFirebase() {
 }
 
 void streamCallback(StreamData data) {
-    Serial.println("📡 Firebase-Daten aktualisiert!");
-    Serial.print("📌 Geänderte Datenpfad: ");
+    Serial.println("📡 Firebase data updated!");
+    Serial.print("📌 Changed data path: ");
     Serial.println(data.dataPath());
 
     if (data.dataType() == "int") {
@@ -164,46 +163,45 @@ void streamCallback(StreamData data) {
             start = data.intData();
         }
 
-        Serial.print("🔄 Neuer Wert: ");
+        Serial.print("🔄 New value: ");
         Serial.println(data.intData());
     }
 }
 
 void streamTimeoutCallback(bool timeout) {
     if (timeout) {
-        Serial.println("🔥 Firebase-Stream Timeout, versuche erneut...");
+        Serial.println("🔥 Firebase stream timeout, retrying...");
         Firebase.beginStream(fbdo, "/");
     }
 }
 
 void fetchInitialValues() {
-    Serial.println("📥 Lade Startwerte aus der Datenbank...");
+    Serial.println("📥 Loading initial values from the database...");
 
     if (Firebase.getInt(fbdo, "/index")) {
         currentIndex = fbdo.intData();
-        Serial.print("✔️ Geladener Wert für currentIndex: ");
+        Serial.print("✔️ Loaded value for currentIndex: ");
         Serial.println(currentIndex);
     } else {
-        Serial.print("❌ Fehler beim Abrufen von /index: ");
+        Serial.print("❌ Error fetching /index: ");
         Serial.println(fbdo.errorReason());
     }
 
     if (Firebase.getInt(fbdo, "/index2")) {
         index2 = fbdo.intData();
-        Serial.print("✔️ Geladener Wert für index2: ");
+        Serial.print("✔️ Loaded value for index2: ");
         Serial.println(index2);
     }
 
     if (Firebase.getInt(fbdo, "/timer")) {
         timer = fbdo.intData();
-        Serial.print("✔️ Geladener Wert für timer: ");
+        Serial.print("✔️ Loaded value for timer: ");
         Serial.println(timer);
     }
 
      if (Firebase.getInt(fbdo, "/start")) {
         start = fbdo.intData();
-        Serial.print("✔️ Geladener Wert für start: ");
+        Serial.print("✔️ Loaded value for start: ");
         Serial.println(start);
     }
 }
-
